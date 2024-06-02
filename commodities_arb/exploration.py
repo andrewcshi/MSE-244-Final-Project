@@ -70,7 +70,7 @@ for name, df in data.items():
 selected_commodities = list(data.keys())[:5]
 merged_data = pd.DataFrame()
 for name in selected_commodities:
-    merged_data[name] = filter_data(data[name]).set_index('Date_')['Normalized_Settlement']
+    merged_data[name] = filter_data(data[name])['Normalized_Settlement']
 
 sns.pairplot(merged_data)
 plt.show()
