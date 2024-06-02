@@ -163,7 +163,7 @@ cumulative_spy_returns = (1 + aligned_returns).cumprod() - 1
 cumulative_strategy_returns = (1 + strategy_returns).cumprod() - 1
 
 # Add swap cost every time the position changes
-swap_fees = (np.abs(positions - positions.shift(1).fillna(0)) * COST_IN_BPS * 10**(-6)).cumsum()
+swap_fees = (np.abs(positions - positions.shift(1).fillna(0)) * COST_IN_BPS * 10**(-4)).cumsum()
 cumulative_strategy_returns -= swap_fees
 
 # Plot cumulative returns

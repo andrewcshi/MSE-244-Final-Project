@@ -125,12 +125,12 @@ print(nonzero_positions.head())
 tmp = nonzero_positions.copy()
 tmp = tmp.shift(1)
 tmp.iloc[0] = 0
-swap_fees = (np.abs(nonzero_positions - tmp) * COST_IN_BPS * 10**(-6)).cumsum().sum(axis=1)
+swap_fees = (np.abs(nonzero_positions - tmp) * COST_IN_BPS * 10**(-4)).cumsum().sum(axis=1)
 print("fees are", swap_fees.tail())
 
 #also impose a holding fee (annual expense ratio)
 total_pos = nonzero_positions.copy().sum(axis=1)
-holding_fee = (total_pos * DAILY_EXPENSE_RATIO_BPS * 10**(-6)).cumsum()
+holding_fee = (total_pos * DAILY_EXPENSE_RATIO_BPS * 10**(-4)).cumsum()
 print("holding", holding_fee.tail())
 
 # Plot 1: Heatmap of Positions
