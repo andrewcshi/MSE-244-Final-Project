@@ -7,6 +7,9 @@ import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+COST_IN_BPS = 5 #0.05%
+DAILY_EXPENSE_RATIO_BPS = 10/365 #0.10% annually
+
 warnings.filterwarnings('ignore')
 prices = pd.read_csv('data/all_data_3.csv')
 warnings.filterwarnings('ignore')
@@ -111,14 +114,28 @@ def sig2pos(spreads: pd.DataFrame, df: pd.DataFrame, cointegrating_betas: pd.Dat
 # Store positions
 positions = sig2pos(spreads, prices, hedge_ratios)
 
+print("positions are")
+print(positions.head())
+
 # For display positions
 nonzero_positions = positions.loc[:, (positions != 0).any(axis=0)]
 print(nonzero_positions.head())
 
+#calculate trading fees for position. Impose a transaction cost for each switch in position
+tmp = nonzero_positions.copy()
+tmp = tmp.shift(1)
+tmp.iloc[0] = 0
+swap_fees = (np.abs(nonzero_positions - tmp) * COST_IN_BPS * 10**(-6)).cumsum().sum(axis=1)
+print("fees are", swap_fees.tail())
+
+#also impose a holding fee (annual expense ratio)
+total_pos = nonzero_positions.copy().sum(axis=1)
+holding_fee = (total_pos * DAILY_EXPENSE_RATIO_BPS * 10**(-6)).cumsum()
+print("holding", holding_fee.tail())
+
 # Plot 1: Heatmap of Positions
 plt.figure(figsize=(12, 8))
 sns.heatmap(nonzero_positions.T, cmap='coolwarm', cbar=True)
-plt.title('Heatmap of ETF Positions Over Time')
 plt.xlabel('')
 plt.ylabel('ETFs')
 
@@ -126,8 +143,11 @@ ax = plt.gca()
 ax.set_xticks([])
 plt.show()
 
+print("shape is")
+print(swap_fees.shape, (returns * nonzero_positions.shift(1)).sum(axis=1).cumsum().shape)
+
 # Plot 2: Cumulative Returns
-cumulative_returns = (returns * nonzero_positions.shift(1)).sum(axis=1).cumsum()
+cumulative_returns = (returns * nonzero_positions.shift(1)).sum(axis=1).cumsum() - swap_fees
 plt.figure(figsize=(12, 8))
 cumulative_returns.plot()
 plt.title('Cumulative Returns of the Portfolio')

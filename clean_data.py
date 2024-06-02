@@ -141,9 +141,9 @@ csv_paths = [
     'cleaned_data/all_data_19.csv',
 ]
 
-for i in range(len(file_paths)):
-    output_file = f'all_data_{i}.csv'
-    transform_to_n225_format(file_paths[i], output_file, sector_list[i])
+# for i in range(len(file_paths)):
+#     output_file = f'all_data_{i}.csv'
+#     transform_to_n225_format(file_paths[i], output_file, sector_list[i])
 
 merged_df = merge_csv_files(csv_paths)
 

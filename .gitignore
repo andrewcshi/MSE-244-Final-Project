@@ -3,3 +3,5 @@ csv_data/
 us/
 .venv_mse244-project/
 .DS_Store
+
+cleaned_data/
