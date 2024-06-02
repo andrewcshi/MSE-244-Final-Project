@@ -6,3 +6,4 @@ us/
 *.zip
 *.csv
 *.gz
+cleaned_data/
