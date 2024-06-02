@@ -69,8 +69,6 @@ def find_pairs(normalized_prices: pd.DataFrame, num_pairs: int) -> list[tuple[st
 # Store top 20 pairs
 top_20_pairs = find_pairs(normalized_prices, 20)
 
-window_size = 252
-
 # Estimate spreads between top K pairs
 def estimate_spreads(pairs: list[tuple[str, str]], prices: pd.DataFrame, window_size: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     spread_dict = {}
@@ -101,22 +99,26 @@ def estimate_spreads(pairs: list[tuple[str, str]], prices: pd.DataFrame, window_
     return spreads, hedge_ratios
 
 # Store spreads and pairs trading hedge ratios
-spreads, hedge_ratios = estimate_spreads(top_20_pairs, prices)
+window_size = 252
+spreads, hedge_ratios = estimate_spreads(top_20_pairs, prices, window_size)
 
 # Translate signals to portfolio positions
-def sig2pos(spreads: pd.DataFrame, df: pd.DataFrame, cointegrating_betas: pd.DataFrame, threshold: float = 1.0) -> pd.DataFrame:
+def sig2pos(spreads: pd.DataFrame, df: pd.DataFrame, hedge_ratios: pd.DataFrame, threshold: float = 1.0) -> pd.DataFrame:
     positions = pd.DataFrame(index=spreads.index, columns=df.columns).fillna(0)
 
     for pair in spreads.columns:
         spread = spreads[pair]
         ticker1, ticker2 = pair.split('-')
-        hedge_ratio = cointegrating_betas[pair].iloc[0]
+
+        hedge_ratio = hedge_ratios[pair]
+        print("the hedge ratio series looks like:", hedge_ratio)
 
         # Short or long first security based on threshold
         positions.loc[spread > threshold, ticker1] = -1
         positions.loc[spread < -threshold, ticker1] = 1
 
         # Perform pairs trading on cointegrated security
+        #hedgre ratio here is a series
         positions[ticker2] = -positions[ticker1] * hedge_ratio
 
     return positions
