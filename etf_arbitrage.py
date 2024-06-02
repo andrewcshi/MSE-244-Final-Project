@@ -147,7 +147,7 @@ print("shape is")
 print(swap_fees.shape, (returns * nonzero_positions.shift(1)).sum(axis=1).cumsum().shape)
 
 # Plot 2: Cumulative Returns
-cumulative_returns = (returns * nonzero_positions.shift(1)).sum(axis=1).cumsum() - swap_fees
+cumulative_returns = (returns * nonzero_positions.shift(1)).sum(axis=1).cumsum() - swap_fees - holding_fee
 plt.figure(figsize=(12, 8))
 cumulative_returns.plot()
 plt.title('Cumulative Returns of the Portfolio')
