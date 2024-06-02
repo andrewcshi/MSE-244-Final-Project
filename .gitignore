@@ -3,3 +3,6 @@ csv_data/
 us/
 .venv_mse244-project/
 .DS_Store
+*.zip
+*.csv
+*.gz
