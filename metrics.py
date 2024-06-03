@@ -27,3 +27,12 @@ def kurtosis(returns: pd.Series) -> pd.Series:
 
 def max_drawdown(returns: pd.Series) -> pd.Series:
     return drawdowns(returns).min()
+
+def print_all_metrics(returns: pd.Series):
+    # print('cumulative_return:', cumulative_returns(returns))
+    print('annualized_sharpe_ratio:', annualized_sharpe_ratio(returns))
+    print('annualized_return:', annualized_return(returns))
+    print('annualized_volatility:', annualized_volatility(returns))
+    print('skewness:', skewness(returns))
+    print('kurtosis:', kurtosis(returns))
+    print('max_drawdown:', max_drawdown(returns))
