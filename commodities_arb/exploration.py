@@ -22,9 +22,14 @@ commodity_files = [
     #"livecattlecomposite.csv",
     #"lumber.csv",
     #"NaturalGas.csv",
+    #"MontBelvieuLDHPropane.csv"
+    #"NaturalGas.csv"
     #"Sugar11.csv",
     "wheatcomposite.csv",
-    #"soybeancomposite.csv"
+    #"soybeancomposite.csv",
+    #"soybeanmeal.csv",
+    #"soybreal-oil.csv",
+    #"Sugar11.csv"
 ]
 # Function to load, clean, and normalize data
 def load_and_clean_data(file):
