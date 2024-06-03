@@ -36,3 +36,10 @@ def print_all_metrics(returns: pd.Series):
     print('skewness:', skewness(returns))
     print('kurtosis:', kurtosis(returns))
     print('max_drawdown:', max_drawdown(returns))
+
+def return_all_metrics(returns: pd.Series):
+    return_stats = pd.DataFrame(index=['Mean', 'Volatility', 'Sharpe', 'Skewness', 'Kurtosis', 'Max Drawdown'])
+    return_stats[0] = [annualized_return(returns), annualized_volatility(returns), annualized_sharpe_ratio(returns), \
+                                    skewness(returns), kurtosis(returns), max_drawdown(returns)]
+    return_stats = return_stats.T
+    return return_stats

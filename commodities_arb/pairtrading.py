@@ -19,7 +19,10 @@ dtype_spec = {
 # List of pairs
 commodity_pairs = [
     ("commodities/soybeanmeal.csv", "commodities/soybeancomposite.csv"),
-    ("commodities/NaturalGas.csv", "commodities/HeatingOil.csv")
+    ("commodities/NaturalGas.csv", "commodities/HeatingOil.csv"),
+    ("commodities/wheatcomposite.csv", "commodities/Sugar11.csv"),
+    ("commodities/GasolineRBOB.csv", "commodities/CoffeeC.csv"),
+    # ("commodities/BrentCrudeOilLastDay.csv", "commodities/MontBelvieuLDHPropane.csv")
 ]
 
 # Function to load and clean data
@@ -145,7 +148,7 @@ portfolio_returns.fillna(0, inplace=True)
 
 # Calculate cumulative returns of the portfolio
 portfolio_returns['Total_returns'] = portfolio_returns.drop(columns=['Date_']).sum(axis=1)
-portfolio_returns['Cumulative_returns'] = (1 + portfolio_returns['Total_returns']).cumprod()
+portfolio_returns['Cumulative_returns'] = cumulative_returns(portfolio_returns['Total_returns'])
 
 # Plot the cumulative returns
 print('Plotting results...')
