@@ -1,78 +1,12 @@
-# import pandas as pd
-# import numpy as np
-
-# # Load your data
-# print('Loading data...')
-# corn_data = pd.read_csv('commodities/corn.csv')
-# wheat_data = pd.read_csv('commodities/wheatcomposite.csv')
-# print('Data loaded')
-
-# # Inspect the first few rows of the data
-# print(corn_data.head())
-# print(wheat_data.head())
-
-
-# # Convert Date_ to datetime format
-# corn_data['Date_'] = pd.to_datetime(corn_data['Date_'])
-# wheat_data['Date_'] = pd.to_datetime(wheat_data['Date_'])
-
-# # Filter relevant columns
-# corn_data = corn_data[['FutCode', 'Date_', 'Settlement']]
-# wheat_data = wheat_data[['FutCode', 'Date_', 'Settlement']]
-
-# # Sort by FutCode and Date_
-# corn_data = corn_data.sort_values(by=['FutCode', 'Date_'])
-# wheat_data = wheat_data.sort_values(by=['FutCode', 'Date_'])
-
-# # Inspect the processed data
-# print(corn_data.head())
-# print(wheat_data.head())
-
-
-# # Group by FutCode and ensure continuity
-# corn_grouped = corn_data.groupby('FutCode')
-# wheat_grouped = wheat_data.groupby('FutCode')
-
-# # Function to process each group
-# def process_group(group):
-#     group = group.set_index('Date_')
-#     group = group.resample('D').ffill()  # Forward fill missing dates
-#     return group
-
-# # Apply the function to each group
-# corn_processed = corn_grouped.apply(process_group).reset_index(level=0, drop=True)
-# wheat_processed = wheat_grouped.apply(process_group).reset_index(level=0, drop=True)
-
-# # Inspect the processed data
-# print(corn_processed.head())
-# print(wheat_processed.head())
-
-
-# # Merge the processed data on the date
-# print('Merging data...')
-# data = pd.merge(corn_processed, wheat_processed, on='Date_', suffixes=('_corn', '_wheat'))
-# print('Data merged')
-
-# # Inspect the merged data
-# print(data.head())
-
-
-# # Calculate the spread
-# print('Calculating spread...')
-# data['Spread'] = data['Settlement_corn'] / data['Settlement_wheat']
-
-# # Handle missing values
-# print('Handling missing values...')
-# data['Spread'].replace([np.inf, -np.inf], np.nan, inplace=True)
-# data['Spread'].fillna(method='ffill', inplace=True)
-
-# # Inspect the data with spread
-# print(data.head())
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import random
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from metrics import drawdowns, cumulative_returns, annualized_sharpe_ratio, annualized_return, annualized_volatility, skewness, kurtosis, max_drawdown
 
 # Load your data with dtype specification to avoid mixed type warnings
 print('Loading data...')
@@ -80,108 +14,166 @@ dtype_spec = {
     'FutCode': str,
     'Date_': str,
     'Settlement': float,
-    # Specify other columns if needed
 }
-corn_data = pd.read_csv('commodities/corn.csv', dtype=dtype_spec, low_memory=False)
-wheat_data = pd.read_csv('commodities/wheatcomposite.csv', dtype=dtype_spec, low_memory=False)
-print('Data loaded')
 
-# Convert Date_ to datetime format
-corn_data['Date_'] = pd.to_datetime(corn_data['Date_'])
-wheat_data['Date_'] = pd.to_datetime(wheat_data['Date_'])
+# List of pairs
+commodity_pairs = [
+    ("commodities/soybeanmeal.csv", "commodities/soybeancomposite.csv"),
+    ("commodities/NaturalGas.csv", "commodities/HeatingOil.csv")
+]
 
-# Filter relevant columns
-corn_data = corn_data[['FutCode', 'Date_', 'Settlement']]
-wheat_data = wheat_data[['FutCode', 'Date_', 'Settlement']]
+# Function to load and clean data
+def load_and_clean_data(file):
+    df = pd.read_csv(file, dtype=dtype_spec, low_memory=False)
+    df['Date_'] = pd.to_datetime(df['Date_'])
+    df = df[['FutCode', 'Date_', 'Settlement']]
+    df = df.sort_values(by=['FutCode', 'Date_'])
+    return df
 
-# Sort by FutCode and Date_
-corn_data = corn_data.sort_values(by=['FutCode', 'Date_'])
-wheat_data = wheat_data.sort_values(by=['FutCode', 'Date_'])
-
-# Function to find contracts with matching dates
-def find_matching_contracts(corn_data, wheat_data):
-    corn_contracts = corn_data['FutCode'].unique()
-    wheat_contracts = wheat_data['FutCode'].unique()
+# Function to find 5 matching contracts over time
+def find_matching_contracts(data1, data2):
+    data1_contracts = data1['FutCode'].unique()
+    data2_contracts = data2['FutCode'].unique()
     
-    for corn_contract in corn_contracts:
-        corn_dates = corn_data[corn_data['FutCode'] == corn_contract]['Date_']
-        for wheat_contract in wheat_contracts:
-            wheat_dates = wheat_data[wheat_data['FutCode'] == wheat_contract]['Date_']
-            common_dates = corn_dates[corn_dates.isin(wheat_dates)]
+    matching_pairs = []
+    for contract1 in data1_contracts:
+        data1_dates = data1[data1['FutCode'] == contract1]['Date_']
+        for contract2 in data2_contracts:
+            data2_dates = data2[data2['FutCode'] == contract2]['Date_']
+            common_dates = data1_dates[data1_dates.isin(data2_dates)]
             if len(common_dates) > 0:
-                return corn_contract, wheat_contract, common_dates
-    return None, None, None
+                matching_pairs.append((contract1, contract2, common_dates))
+                if len(matching_pairs) == 5:
+                    return matching_pairs
+    return matching_pairs
 
-# Find a pair with matching dates
-corn_contract, wheat_contract, common_dates = find_matching_contracts(corn_data, wheat_data)
+# Improved function to process data and avoid extending contracts
+def process_data(data1, data2, contract1, contract2, common_dates):
+    data1_selected = data1[(data1['FutCode'] == contract1) & (data1['Date_'].isin(common_dates))]
+    data2_selected = data2[(data2['FutCode'] == contract2) & (data2['Date_'].isin(common_dates))]
+    
+    # Ensure we only have data within the contract periods without extending them
+    data1_selected = data1_selected.set_index('Date_').reindex(common_dates).ffill().reset_index()
+    data2_selected = data2_selected.set_index('Date_').reindex(common_dates).ffill().reset_index()
+    
+    data1_selected['Normalized'] = data1_selected['Settlement'] / data1_selected['Settlement'].iloc[0]
+    data2_selected['Normalized'] = data2_selected['Settlement'] / data2_selected['Settlement'].iloc[0]
+    
+    merged_data = pd.merge(data1_selected[['Date_', 'Normalized']], data2_selected[['Date_', 'Normalized']], on='Date_', suffixes=('_1', '_2'))
+    return merged_data
 
-if corn_contract is None or wheat_contract is None:
-    print('No matching contracts found.')
-else:
-    print(f'Selected Corn Contract: {corn_contract}')
-    print(f'Selected Wheat Contract: {wheat_contract}')
+# Initialize an empty DataFrame for portfolio returns
+portfolio_returns = pd.DataFrame()
 
-    # Filter the selected contracts
-    corn_selected = corn_data[(corn_data['FutCode'] == corn_contract) & (corn_data['Date_'].isin(common_dates))]
-    wheat_selected = wheat_data[(wheat_data['FutCode'] == wheat_contract) & (wheat_data['Date_'].isin(common_dates))]
+# Iterate over each pair and apply pairs trading strategy
+for file1, file2 in commodity_pairs:
+    data1 = load_and_clean_data(file1)
+    data2 = load_and_clean_data(file2)
+    
+    matching_pairs = find_matching_contracts(data1, data2)
+    
+    if len(matching_pairs) < 5:
+        print(f'Not enough matching contracts found for pair: {file1} and {file2}')
+        continue
+    
+    for contract1, contract2, common_dates in matching_pairs:
+        print(f'Selected matching pair: {contract1} and {contract2}')
+        
+        # Process data for the selected pair of contracts
+        merged_data = process_data(data1, data2, contract1, contract2, common_dates)
+        
+        # Drop rows with any NaN or infinite values
+        merged_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+        merged_data.dropna(inplace=True)
+        
+        if merged_data.empty or merged_data['Normalized_1'].empty or merged_data['Normalized_2'].empty:
+            print(f'Empty data after processing for pair: {contract1} and {contract2}')
+            continue
+        
+        # Estimate spread and hedge ratio using linear regression
+        y = merged_data['Normalized_1']
+        x = merged_data['Normalized_2']
+        x = sm.add_constant(x)
+        
+        if x.shape[0] == 0 or y.shape[0] == 0:
+            print(f'Empty arrays for regression for pair: {contract1} and {contract2}')
+            continue
+        
+        model = sm.OLS(y, x).fit()
+        hedge_ratio = model.params[1]
+        
+        # Calculate the spread
+        merged_data['Spread'] = y - hedge_ratio * merged_data['Normalized_2']
+        
+        # Define trading signals using z-score
+        merged_data['Spread_mean'] = merged_data['Spread'].rolling(window=30).mean()
+        merged_data['Spread_std'] = merged_data['Spread'].rolling(window=30).std()
+        merged_data['Z-score'] = (merged_data['Spread'] - merged_data['Spread_mean']) / merged_data['Spread_std']
+        
+        # Handle NaNs in rolling calculations
+        merged_data['Spread_mean'].fillna(method='ffill', inplace=True)
+        merged_data['Spread_std'].fillna(method='ffill', inplace=True)
+        merged_data['Z-score'].fillna(method='ffill', inplace=True)
+        
+        # Generate buy and sell signals
+        entry_threshold = 2
+        exit_threshold = 0
+        merged_data['Signal'] = np.where(merged_data['Z-score'] > entry_threshold, -1, np.nan)  # Short signal
+        merged_data['Signal'] = np.where(merged_data['Z-score'] < -entry_threshold, 1, merged_data['Signal'])  # Long signal
+        merged_data['Signal'] = np.where(abs(merged_data['Z-score']) < exit_threshold, 0, merged_data['Signal'])  # Exit signal
+        
+        # Fill the NaN signals forward
+        merged_data['Signal'] = merged_data['Signal'].ffill().fillna(0)
+        
+        # Translate signals to positions
+        merged_data['Position_1'] = merged_data['Signal']
+        merged_data['Position_2'] = -merged_data['Signal'] * hedge_ratio
+        
+        # Calculate strategy returns
+        merged_data['Return_1'] = merged_data['Position_1'].shift() * merged_data['Normalized_1'].pct_change()
+        merged_data['Return_2'] = merged_data['Position_2'].shift() * merged_data['Normalized_2'].pct_change()
+        merged_data['Strategy_returns'] = merged_data['Return_1'] + merged_data['Return_2']
+        
+        # Append strategy returns to the portfolio
+        if portfolio_returns.empty:
+            portfolio_returns = merged_data[['Date_', 'Strategy_returns']]
+        else:
+            portfolio_returns = pd.merge(portfolio_returns, merged_data[['Date_', 'Strategy_returns']], on='Date_', how='outer', suffixes=('', '_'+contract1+'_'+contract2))
 
-    # Ensure continuity by resampling and forward-filling missing dates
-    corn_selected = corn_selected.set_index('Date_').resample('D').ffill().reset_index()
-    wheat_selected = wheat_selected.set_index('Date_').resample('D').ffill().reset_index()
+# Fill missing values with 0
+portfolio_returns.fillna(0, inplace=True)
 
-    # Normalize prices
-    corn_selected['Normalized'] = corn_selected['Settlement'] / corn_selected['Settlement'].iloc[0]
-    wheat_selected['Normalized'] = wheat_selected['Settlement'] / wheat_selected['Settlement'].iloc[0]
+# Calculate cumulative returns of the portfolio
+portfolio_returns['Total_returns'] = portfolio_returns.drop(columns=['Date_']).sum(axis=1)
+portfolio_returns['Cumulative_returns'] = (1 + portfolio_returns['Total_returns']).cumprod()
 
-    # Estimate spread and hedge ratio
-    y = corn_selected['Normalized']
-    x = wheat_selected['Normalized']
-    x = sm.add_constant(x)
-    model = sm.OLS(y, x).fit()
-    hedge_ratio = model.params[1]
+# Plot the cumulative returns
+print('Plotting results...')
+plt.figure(figsize=(10, 6))
+portfolio_returns['Date_'] = pd.to_datetime(portfolio_returns['Date_'])  # Ensure Date_ is in datetime format
+portfolio_returns.set_index('Date_', inplace=True)
+portfolio_returns['Cumulative_returns'].plot(title='Cumulative Returns from Combined Pairs Trading Strategy')
+plt.xlabel('Date')
+plt.ylabel('Cumulative Returns')
+plt.show()
+print('Finished')
 
-    # Calculate the spread
-    corn_selected['Spread'] = y - hedge_ratio * wheat_selected['Normalized']
 
-    # Define trading signals using z-score
-    corn_selected['Spread_mean'] = corn_selected['Spread'].rolling(window=30).mean()
-    corn_selected['Spread_std'] = corn_selected['Spread'].rolling(window=30).std()
-    corn_selected['Z-score'] = (corn_selected['Spread'] - corn_selected['Spread_mean']) / corn_selected['Spread_std']
+# Calculate metrics
+cumulative_ret = cumulative_returns(portfolio_returns['Total_returns'])
+drawdown = drawdowns(portfolio_returns['Total_returns'])
+sharpe_ratio = annualized_sharpe_ratio(portfolio_returns['Total_returns'])
+ann_return = annualized_return(portfolio_returns['Total_returns'])
+ann_volatility = annualized_volatility(portfolio_returns['Total_returns'])
+port_skewness = skewness(portfolio_returns['Total_returns'])
+port_kurtosis = kurtosis(portfolio_returns['Total_returns'])
+max_ddown = max_drawdown(portfolio_returns['Total_returns'])
 
-    # Handle NaNs in rolling calculations
-    corn_selected['Spread_mean'].fillna(method='ffill', inplace=True)
-    corn_selected['Spread_std'].fillna(method='ffill', inplace=True)
-    corn_selected['Z-score'].fillna(method='ffill', inplace=True)
-
-    # Generate buy and sell signals
-    entry_threshold = 2
-    exit_threshold = 0
-    corn_selected['Signal'] = np.where(corn_selected['Z-score'] > entry_threshold, -1, np.nan)  # Short signal
-    corn_selected['Signal'] = np.where(corn_selected['Z-score'] < -entry_threshold, 1, corn_selected['Signal'])  # Long signal
-    corn_selected['Signal'] = np.where(abs(corn_selected['Z-score']) < exit_threshold, 0, corn_selected['Signal'])  # Exit signal
-
-    # Fill the NaN signals forward
-    corn_selected['Signal'] = corn_selected['Signal'].ffill().fillna(0)
-
-    # Translate signals to positions
-    corn_selected['Position_corn'] = corn_selected['Signal']
-    corn_selected['Position_wheat'] = -corn_selected['Signal'] * hedge_ratio
-
-    # Calculate strategy returns
-    corn_selected['Return_corn'] = corn_selected['Position_corn'].shift() * corn_selected['Settlement'].pct_change()
-    wheat_selected['Return_wheat'] = corn_selected['Position_wheat'].shift() * wheat_selected['Settlement'].pct_change()
-    corn_selected['Strategy_returns'] = corn_selected['Return_corn'] + wheat_selected['Return_wheat']
-    corn_selected['Cumulative_returns'] = (1 + corn_selected['Strategy_returns']).cumprod()
-
-    # Print statistics
-    print('Statistics:')
-    print(corn_selected.describe())
-
-    # Plot the cumulative returns
-    print('Plotting results...')
-    plt.figure(figsize=(10, 6))
-    corn_selected['Cumulative_returns'].plot(title='Cumulative Returns from Pairs Trading Strategy')
-    plt.xlabel('Date')
-    plt.ylabel('Cumulative Returns')
-    plt.show()
-    print('Finished')
+# Print metrics
+print(f"Cumulative Returns: {cumulative_ret.iloc[-1]:.2f}")
+print(f"Max Drawdown: {max_ddown:.2f}")
+print(f"Annualized Sharpe Ratio: {sharpe_ratio:.2f}")
+print(f"Annualized Return: {ann_return:.2f}")
+print(f"Annualized Volatility: {ann_volatility:.2f}")
+print(f"Skewness: {port_skewness:.2f}")
+print(f"Kurtosis: {port_kurtosis:.2f}")
