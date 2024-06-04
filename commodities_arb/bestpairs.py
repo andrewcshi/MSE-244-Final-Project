@@ -33,7 +33,7 @@ import pandas as pd
 import numpy as np
 import os
 from arch.unitroot import engle_granger
-from itertools import combinations
+from itertools import combinations, permutations
 
 # Set the directory containing your CSV files
 data_dir = "commodities"
@@ -80,7 +80,7 @@ def filter_data(df):
 
 # Find best cointegrated pairs
 results = []
-pairs = list(combinations(data.keys(), 2))
+pairs = list(permutations(data.keys(), 2))
 
 for pair in pairs:
     df1 = filter_data(data[pair[0]])
