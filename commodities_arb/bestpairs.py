@@ -62,13 +62,22 @@ commodity_files = [
 ]
 
 # Function to load, clean, and normalize data
+# def load_and_clean_data(file):
+#     df = pd.read_csv(os.path.join(data_dir, file))
+#     df['Date_'] = pd.to_datetime(df['Date_'])
+#     df = df.sort_values(by='Date_')
+#     df = df.replace([np.inf, -np.inf], np.nan).dropna(subset=['Settlement'])
+#     df = df[df['Settlement'] != 0]
+#     df['Normalized_Settlement'] = (df['Settlement'] - df['Settlement'].mean()) / df['Settlement'].std()
+#     return df
 def load_and_clean_data(file):
     df = pd.read_csv(os.path.join(data_dir, file))
     df['Date_'] = pd.to_datetime(df['Date_'])
     df = df.sort_values(by='Date_')
     df = df.replace([np.inf, -np.inf], np.nan).dropna(subset=['Settlement'])
     df = df[df['Settlement'] != 0]
-    df['Normalized_Settlement'] = (df['Settlement'] - df['Settlement'].mean()) / df['Settlement'].std()
+    # Normalize based on initial cost of the contract
+    df['Normalized_Settlement'] = df['Settlement'] / df['Settlement'].iloc[0]
     return df
 
 # Load data into a dictionary of DataFrames

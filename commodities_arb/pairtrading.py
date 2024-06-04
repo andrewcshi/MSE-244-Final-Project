@@ -33,7 +33,7 @@ def load_and_clean_data(file):
     df = df.sort_values(by=['FutCode', 'Date_'])
     return df
 
-# Function to find 5 matching contracts over time
+#Function to find 5 matching contracts over time
 def find_matching_contracts(data1, data2):
     data1_contracts = data1['FutCode'].unique()
     data2_contracts = data2['FutCode'].unique()
@@ -49,6 +49,23 @@ def find_matching_contracts(data1, data2):
                 if len(matching_pairs) == 5:
                     return matching_pairs
     return matching_pairs
+# def find_matching_contracts(data1, data2):
+#     data1_contracts = data1['FutCode'].unique()
+#     data2_contracts = data2['FutCode'].unique()
+    
+#     matching_pairs = []
+#     start_date = pd.Timestamp('2022-01-01')
+    
+#     for contract1 in data1_contracts:
+#         data1_dates = data1[data1['FutCode'] == contract1]['Date_']
+#         for contract2 in data2_contracts:
+#             data2_dates = data2[data2['FutCode'] == contract2]['Date_']
+#             common_dates = data1_dates[data1_dates.isin(data2_dates)]
+#             if len(common_dates) > 0 and common_dates.iloc[0] >= start_date:
+#                 matching_pairs.append((contract1, contract2, common_dates))
+#                 if len(matching_pairs) == 5:
+#                     return matching_pairs
+#     return matching_pairs
 
 # Improved function to process data and avoid extending contracts
 def process_data(data1, data2, contract1, contract2, common_dates):
@@ -161,7 +178,15 @@ plt.ylabel('Cumulative Returns')
 plt.show()
 print('Finished')
 
+portfolio_returns['Total_returns'].to_csv('commodities_returns.csv')
+# Read the CSV file
+data = pd.read_csv("commodities_returns.csv")
 
+# Sort by the 'Date_' column in ascending order (change to 'descending' for newest to oldest)
+sorted_data = data.sort_values(by='Date_', ascending=True)
+
+# Save the sorted data to a new CSV file
+sorted_data.to_csv("sorted_commodities_returns.csv", index=False)
 # Calculate metrics
 cumulative_ret = cumulative_returns(portfolio_returns['Total_returns'])
 drawdown = drawdowns(portfolio_returns['Total_returns'])
@@ -172,11 +197,14 @@ port_skewness = skewness(portfolio_returns['Total_returns'])
 port_kurtosis = kurtosis(portfolio_returns['Total_returns'])
 max_ddown = max_drawdown(portfolio_returns['Total_returns'])
 
-# Print metrics
-print(f"Cumulative Returns: {cumulative_ret.iloc[-1]:.2f}")
-print(f"Max Drawdown: {max_ddown:.2f}")
-print(f"Annualized Sharpe Ratio: {sharpe_ratio:.2f}")
-print(f"Annualized Return: {ann_return:.2f}")
-print(f"Annualized Volatility: {ann_volatility:.2f}")
-print(f"Skewness: {port_skewness:.2f}")
-print(f"Kurtosis: {port_kurtosis:.2f}")
+print('cumret', cumulative_ret)
+
+print('drawdown', drawdown)
+
+print('sharpe', sharpe_ratio)
+
+print('ret', ann_return)
+print('vol', ann_volatility)
+print('skew', port_skewness)
+print('kurt', port_kurtosis)
+print('ddown', max_ddown)
