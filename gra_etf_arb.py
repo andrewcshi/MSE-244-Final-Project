@@ -14,7 +14,7 @@ DAILY_EXPENSE_RATIO_BPS = 10/365 #0.10% annually
 
 
 warnings.filterwarnings('ignore')
-prices = pd.read_csv('data/all_data_3.csv')
+prices = pd.read_csv('data/all_data.csv')
 warnings.filterwarnings('ignore')
 
 metadata = pd.DataFrame(prices.iloc[:2])
@@ -160,3 +160,5 @@ plt.xlabel('Date')
 plt.ylabel('Cumulative Returns')
 plt.legend()
 plt.show()
+
+cumulative_strategy_returns.to_csv('cumulative_strategy_returns.csv')

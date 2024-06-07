@@ -11,7 +11,7 @@ COST_IN_BPS = 5 #0.05%
 DAILY_EXPENSE_RATIO_BPS = 10/365 #0.10% annually
 
 warnings.filterwarnings('ignore')
-prices = pd.read_csv('data/all_data_3.csv')
+prices = pd.read_csv('data/all_data.csv')
 warnings.filterwarnings('ignore')
 
 metadata = pd.DataFrame(prices.iloc[:2])

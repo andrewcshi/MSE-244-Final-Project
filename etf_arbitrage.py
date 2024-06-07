@@ -11,7 +11,7 @@ COST_IN_BPS = 5 #0.05%
 DAILY_EXPENSE_RATIO_BPS = 10/365 #0.10% annually
 
 warnings.filterwarnings('ignore')
-prices = pd.read_csv('data/all_data_3.csv')
+prices = pd.read_csv('data/all_data.csv')
 warnings.filterwarnings('ignore')
 
 metadata = pd.DataFrame(prices.iloc[:2])
@@ -150,6 +150,7 @@ print(swap_fees.shape, (returns * nonzero_positions.shift(1)).sum(axis=1).cumsum
 cumulative_returns = (returns * nonzero_positions.shift(1)).sum(axis=1).cumsum() - swap_fees - holding_fee
 plt.figure(figsize=(12, 8))
 cumulative_returns.plot()
+cumulative_returns.to_csv('etfarb.csv')
 plt.title('Cumulative Returns of the Portfolio')
 plt.xlabel('Date')
 plt.ylabel('Cumulative Returns')
