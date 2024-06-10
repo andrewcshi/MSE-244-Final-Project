@@ -18,11 +18,12 @@ dtype_spec = {
 
 # List of pairs
 commodity_pairs = [
-    ("commodities/soybeanmeal.csv", "commodities/soybeancomposite.csv"),
-    ("commodities/NaturalGas.csv", "commodities/HeatingOil.csv"),
-    ("commodities/wheatcomposite.csv", "commodities/Sugar11.csv"),
-    ("commodities/GasolineRBOB.csv", "commodities/CoffeeC.csv"),
-    # ("commodities/BrentCrudeOilLastDay.csv", "commodities/MontBelvieuLDHPropane.csv")
+    ("commodities/CoffeeC.csv", "commodities/feedercattle.csv"),
+    #("commodities/soybeanmeal.csv", "commodities/soybeancomposite.csv"),
+    ("commodities/LeanHogsComposite.csv", "commodities/livecattlecomposite.csv"),
+    ("commodities/soybreal-oil.csv", "commodities/wheatcomposite.csv"),
+    ("commodities/HenryHubNaturalGas FinancialLastDayComposite.csv", "commodities/GasolineRBOB.csv"),
+    #("commodities/BrentCrudeOilLastDay.csv", "commodities/MontBelvieuLDHPropane.csv")
 ]
 
 # Function to load and clean data
@@ -33,41 +34,53 @@ def load_and_clean_data(file):
     df = df.sort_values(by=['FutCode', 'Date_'])
     return df
 
-#Function to find 5 matching contracts over time
 def find_matching_contracts(data1, data2):
     data1_contracts = data1['FutCode'].unique()
     data2_contracts = data2['FutCode'].unique()
-    
+
     matching_pairs = []
     for contract1 in data1_contracts:
-        data1_dates = data1[data1['FutCode'] == contract1]['Date_']
+        # Filter dates for contract1 to only include those after 2012
+        data1_dates = data1[(data1['FutCode'] == contract1) & (data1['Date_'] > '2010-12-31')]['Date_']
         for contract2 in data2_contracts:
-            data2_dates = data2[data2['FutCode'] == contract2]['Date_']
+            # Filter dates for contract2 to only include those after 2012
+            data2_dates = data2[(data2['FutCode'] == contract2) & (data2['Date_'] > '2010-12-31')]['Date_']
             common_dates = data1_dates[data1_dates.isin(data2_dates)]
             if len(common_dates) > 0:
                 matching_pairs.append((contract1, contract2, common_dates))
                 if len(matching_pairs) == 5:
                     return matching_pairs
     return matching_pairs
+# #Function to find 5 matching contracts over time
 # def find_matching_contracts(data1, data2):
 #     data1_contracts = data1['FutCode'].unique()
 #     data2_contracts = data2['FutCode'].unique()
     
 #     matching_pairs = []
-#     start_date = pd.Timestamp('2022-01-01')
-    
 #     for contract1 in data1_contracts:
 #         data1_dates = data1[data1['FutCode'] == contract1]['Date_']
 #         for contract2 in data2_contracts:
 #             data2_dates = data2[data2['FutCode'] == contract2]['Date_']
 #             common_dates = data1_dates[data1_dates.isin(data2_dates)]
-#             if len(common_dates) > 0 and common_dates.iloc[0] >= start_date:
+#             if len(common_dates) > 0:
 #                 matching_pairs.append((contract1, contract2, common_dates))
 #                 if len(matching_pairs) == 5:
 #                     return matching_pairs
 #     return matching_pairs
 
-# Improved function to process data and avoid extending contracts
+# def process_data(data1, data2, contract1, contract2, common_dates):
+#     data1_selected = data1[(data1['FutCode'] == contract1) & (data1['Date_'].isin(common_dates))]
+#     data2_selected = data2[(data2['FutCode'] == contract2) & (data2['Date_'].isin(common_dates))]
+    
+#     # Ensure we only have data within the contract periods without extending them
+#     data1_selected = data1_selected.set_index('Date_').reindex(common_dates).ffill().reset_index()
+#     data2_selected = data2_selected.set_index('Date_').reindex(common_dates).ffill().reset_index()
+    
+#     data1_selected['Normalized'] = data1_selected['Settlement'] / data1_selected['Settlement'].iloc[0]
+#     data2_selected['Normalized'] = data2_selected['Settlement'] / data2_selected['Settlement'].iloc[0]
+    
+#     merged_data = pd.merge(data1_selected[['Date_', 'Normalized']], data2_selected[['Date_', 'Normalized']], on='Date_', suffixes=('_1', '_2'))
+#     return merged_data
 def process_data(data1, data2, contract1, contract2, common_dates):
     data1_selected = data1[(data1['FutCode'] == contract1) & (data1['Date_'].isin(common_dates))]
     data2_selected = data2[(data2['FutCode'] == contract2) & (data2['Date_'].isin(common_dates))]
@@ -79,7 +92,9 @@ def process_data(data1, data2, contract1, contract2, common_dates):
     data1_selected['Normalized'] = data1_selected['Settlement'] / data1_selected['Settlement'].iloc[0]
     data2_selected['Normalized'] = data2_selected['Settlement'] / data2_selected['Settlement'].iloc[0]
     
-    merged_data = pd.merge(data1_selected[['Date_', 'Normalized']], data2_selected[['Date_', 'Normalized']], on='Date_', suffixes=('_1', '_2'))
+    merged_data = pd.merge(data1_selected[['Date_', 'Normalized', 'Settlement']],
+                           data2_selected[['Date_', 'Normalized', 'Settlement']],
+                           on='Date_', suffixes=('_1', '_2'))
     return merged_data
 
 # Initialize an empty DataFrame for portfolio returns
@@ -150,21 +165,39 @@ for file1, file2 in commodity_pairs:
         merged_data['Position_2'] = -merged_data['Signal'] * hedge_ratio
         
         # Calculate strategy returns
-        merged_data['Return_1'] = merged_data['Position_1'].shift() * merged_data['Normalized_1'].pct_change()
-        merged_data['Return_2'] = merged_data['Position_2'].shift() * merged_data['Normalized_2'].pct_change()
+        # merged_data['Return_1'] = merged_data['Position_1'].shift() * merged_data['Normalized_1'].pct_change()
+        # merged_data['Return_2'] = merged_data['Position_2'].shift() * merged_data['Normalized_2'].pct_change()
+        # merged_data['Strategy_returns'] = merged_data['Return_1'] + merged_data['Return_2']
+                # Calculate strategy returns using actual settlement prices
+        merged_data['Return_1'] = merged_data['Position_1'].shift() * (merged_data['Settlement_1'].pct_change())
+        merged_data['Return_2'] = merged_data['Position_2'].shift() * (merged_data['Settlement_2'].pct_change())
         merged_data['Strategy_returns'] = merged_data['Return_1'] + merged_data['Return_2']
+
         
         # Append strategy returns to the portfolio
+        #portfolio_returns['Cumulative_returns'] = cumulative_returns(portfolio_returns['Total_returns'])
+
         if portfolio_returns.empty:
             portfolio_returns = merged_data[['Date_', 'Strategy_returns']]
         else:
             portfolio_returns = pd.merge(portfolio_returns, merged_data[['Date_', 'Strategy_returns']], on='Date_', how='outer', suffixes=('', '_'+contract1+'_'+contract2))
 
 # Fill missing values with 0
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Define a function to calculate cumulative returns
+def cumulative_returns(returns):
+    return (1 + returns).cumprod() - 1
+
+# Adjusted code for computing cumulative returns and plotting
 portfolio_returns.fillna(0, inplace=True)
 
-# Calculate cumulative returns of the portfolio
+# Calculate total returns for each day
 portfolio_returns['Total_returns'] = portfolio_returns.drop(columns=['Date_']).sum(axis=1)
+
+# Calculate cumulative returns
 portfolio_returns['Cumulative_returns'] = cumulative_returns(portfolio_returns['Total_returns'])
 
 # Plot the cumulative returns
@@ -175,17 +208,19 @@ portfolio_returns.set_index('Date_', inplace=True)
 portfolio_returns['Cumulative_returns'].plot(title='Cumulative Returns from Combined Pairs Trading Strategy')
 plt.xlabel('Date')
 plt.ylabel('Cumulative Returns')
+plt.grid(True)
 plt.show()
 print('Finished')
 
-portfolio_returns['Total_returns'].to_csv('commodities_returns.csv')
+# Save the total returns to a CSV file
+portfolio_returns.reset_index().to_csv('commodities_returns.csv', columns=['Date_', 'Total_returns'], index=False)
+
 # Read the CSV file
 data = pd.read_csv("commodities_returns.csv")
 
 # Sort by the 'Date_' column in ascending order (change to 'descending' for newest to oldest)
 sorted_data = data.sort_values(by='Date_', ascending=True)
 
-# Save the sorted data to a new CSV file
 sorted_data.to_csv("sorted_commodities_returns.csv", index=False)
 # Calculate metrics
 cumulative_ret = cumulative_returns(portfolio_returns['Total_returns'])
