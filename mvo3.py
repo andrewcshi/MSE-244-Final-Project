@@ -7,13 +7,15 @@ asset1 = pd.read_csv('sorted_commodities_returns.csv')
 asset2 = pd.read_csv('etfarb.csv')
 asset3 = pd.read_csv('cumulative_strategy_returns.csv')
 
-# Convert the 'Date_' column to datetime to ensure proper merging
-asset1['Date_'] = pd.to_datetime(asset1['Date_'])
-asset2['Date_'] = pd.to_datetime(asset2['Date_'])
-asset3['Date_'] = pd.to_datetime(asset3['Date_'])
+# Convert the 'Date' column to datetime to ensure proper merging
+asset1['Date'] = pd.to_datetime(asset1['Date'])
+asset2['Date'] = pd.to_datetime(asset2['Date'])
+asset3['Date'] = pd.to_datetime(asset3['Date'])
 
-# Merge the dataframes on 'Date_'
-data_merged = pd.merge(pd.merge(asset1, asset2, on='Date_', suffixes=('_asset1', '_asset2')), asset3, on='Date_')
+# Merge the dataframes on 'Date'
+data_merged = pd.merge(pd.merge(asset1, asset2, on='Date', suffixes=('_asset1', '_asset2')), asset3, on='Date')
+
+print(data_merged.head())
 
 data_merged.rename(columns={'Total_returns': 'Total_returns_asset3'}, inplace=True)
 
